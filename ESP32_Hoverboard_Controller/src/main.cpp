@@ -59,6 +59,11 @@ const char index_html[] PROGMEM = R"rawliteral(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial; text-align: center; margin:0px auto; padding-top: 30px;}
+    .slidecontainer { width: 100%; }
+    .slider { -webkit-appearance: none; width: 100%; height: 15px; border-radius: 5px; background: #d3d3d3; outline: none; opacity: 0.7; -webkit-transition: .2s; transition: opacity .2s;}
+    .slider:hover { opacity: 1; }
+    .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 25px; height: 25px; border-radius: 50%; background: #4CAF50; cursor: pointer; }
+    .slider::-moz-range-thumb { width: 25px; height: 25px; border-radius: 50%; background: #4CAF50; cursor: pointer; }
     .controls { margin: 20px; }
     .button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
     .button2 {background-color: #555555;}
@@ -67,6 +72,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <h1>Hoverboard Motor Controller</h1>
+  <div class="slidecontainer">
+    <p>Sensitivity: <span id="sensitivityValue">1.0</span></p>
+    <input type="range" min="0" max="200" value="100" class="slider" id="sensitivitySlider" oninput="updateSensitivity(this.value)">
+  </div>
   <div class="controls">
     <p>Use keyboard controls:</p>
     <p>W: Forward, S: Backward, A: Left, D: Right, Space: Stop</p>
@@ -82,6 +91,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   </div>
   <script>
     let keys = {};
+    let sensitivity = 1.0;
     document.addEventListener('keydown', (e) => {
       keys[e.key.toLowerCase()] = true;
       updateCommand();
@@ -90,17 +100,24 @@ const char index_html[] PROGMEM = R"rawliteral(
       keys[e.key.toLowerCase()] = false;
       updateCommand();
     });
+    function updateSensitivity(val) {
+      sensitivity = parseInt(val) / 100.0;
+      document.getElementById('sensitivityValue').innerHTML = sensitivity.toFixed(1);
+      updateCommand();
+    }
     function updateCommand() {
-      let speed = 0;
-      let steer = 0;
-      if (keys['w']) speed = 500;
-      if (keys['s']) speed = -500;
-      if (keys['a']) steer = -500;
-      if (keys['d']) steer = 500;
+      let speedDir = 0;
+      let steerDir = 0;
+      if (keys['w']) speedDir = 1;
+      if (keys['s']) speedDir = -1;
+      if (keys['a']) steerDir = -1;
+      if (keys['d']) steerDir = 1;
       if (keys[' ']) {
-        speed = 0;
-        steer = 0;
+        speedDir = 0;
+        steerDir = 0;
       }
+      let speed = speedDir * 500 * sensitivity;
+      let steer = steerDir * 500 * sensitivity;
       document.getElementById('speedValue').innerHTML = speed;
       document.getElementById('steerValue').innerHTML = steer;
       sendCommand(speed, steer);
