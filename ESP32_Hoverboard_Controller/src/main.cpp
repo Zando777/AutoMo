@@ -2,15 +2,15 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoOTA.h>
+#include "wifi_config.h"
 
 // Hoverboard communication defines
 #define HOVER_SERIAL_BAUD   115200
 #define START_FRAME         0xABCD
 #define TIME_SEND           100
 
-// WiFi credentials
-const char* ssid = "Your_SSID";
-const char* password = "Your_PASSWORD";
+// WiFi credentials are now loaded from wifi_config.h (git-ignored)
 
 // Web server
 AsyncWebServer server(80);
@@ -59,11 +59,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial; text-align: center; margin:0px auto; padding-top: 30px;}
-    .slidecontainer { width: 100%; }
-    .slider { -webkit-appearance: none; width: 100%; height: 15px; border-radius: 5px; background: #d3d3d3; outline: none; opacity: 0.7; -webkit-transition: .2s; transition: opacity .2s;}
-    .slider:hover { opacity: 1; }
-    .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 25px; height: 25px; border-radius: 50%; background: #4CAF50; cursor: pointer; }
-    .slider::-moz-range-thumb { width: 25px; height: 25px; border-radius: 50%; background: #4CAF50; cursor: pointer; }
+    .controls { margin: 20px; }
     .button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
     .button2 {background-color: #555555;}
     .feedback { margin-top: 20px; }
@@ -71,15 +67,13 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <h1>Hoverboard Motor Controller</h1>
-  <div class="slidecontainer">
-    <p>Speed: <span id="speedValue"></span></p>
-    <input type="range" min="-1000" max="1000" value="0" class="slider" id="speedSlider" oninput="updateSpeed(this.value)">
+  <div class="controls">
+    <p>Use keyboard controls:</p>
+    <p>W: Forward, S: Backward, A: Left, D: Right, Space: Stop</p>
+    <p>Speed: <span id="speedValue">0</span></p>
+    <p>Steer: <span id="steerValue">0</span></p>
+    <button class="button" onclick="stopMotors()">STOP</button>
   </div>
-  <div class="slidecontainer">
-    <p>Steer: <span id="steerValue"></span></p>
-    <input type="range" min="-1000" max="1000" value="0" class="slider" id="steerSlider" oninput="updateSteer(this.value)">
-  </div>
-  <button class="button" onclick="stopMotors()">STOP</button>
   <div class="feedback">
     <p>Left Speed: <span id="leftSpeed">0</span></p>
     <p>Right Speed: <span id="rightSpeed">0</span></p>
@@ -87,24 +81,37 @@ const char index_html[] PROGMEM = R"rawliteral(
     <p>Board Temp: <span id="boardTemp">0</span></p>
   </div>
   <script>
-    function updateSpeed(val) {
-      document.getElementById('speedValue').innerHTML = val;
-      sendCommand();
-    }
-    function updateSteer(val) {
-      document.getElementById('steerValue').innerHTML = val;
-      sendCommand();
+    let keys = {};
+    document.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      updateCommand();
+    });
+    document.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+      updateCommand();
+    });
+    function updateCommand() {
+      let speed = 0;
+      let steer = 0;
+      if (keys['w']) speed = 500;
+      if (keys['s']) speed = -500;
+      if (keys['a']) steer = -500;
+      if (keys['d']) steer = 500;
+      if (keys[' ']) {
+        speed = 0;
+        steer = 0;
+      }
+      document.getElementById('speedValue').innerHTML = speed;
+      document.getElementById('steerValue').innerHTML = steer;
+      sendCommand(speed, steer);
     }
     function stopMotors() {
-      document.getElementById('speedSlider').value = 0;
-      document.getElementById('steerSlider').value = 0;
+      keys = {};
       document.getElementById('speedValue').innerHTML = 0;
       document.getElementById('steerValue').innerHTML = 0;
-      sendCommand();
+      sendCommand(0, 0);
     }
-    function sendCommand() {
-      var speed = document.getElementById('speedSlider').value;
-      var steer = document.getElementById('steerSlider').value;
+    function sendCommand(speed, steer) {
       var xhr = new XMLHttpRequest();
       xhr.open("GET", "/set?speed=" + speed + "&steer=" + steer, true);
       xhr.send();
@@ -136,47 +143,99 @@ void Send(int16_t uSteer, int16_t uSpeed) {
   HoverSerial.write((uint8_t *) &Command, sizeof(Command));
 }
 
+// ########################## RECEIVE ##########################
 void Receive() {
+  // Check for new data availability in the Serial buffer
   if (HoverSerial.available()) {
-    incomingByte = HoverSerial.read();
-    bufStartFrame = ((uint16_t)(incomingByte) << 8) | incomingBytePrev;
+    incomingByte = HoverSerial.read();                                   // Read the incoming byte
+    bufStartFrame = ((uint16_t)(incomingByte) << 8) | incomingBytePrev; // Construct the start frame
   } else {
     return;
   }
 
-  if (bufStartFrame == START_FRAME) {
+  // Copy received data
+  if (bufStartFrame == START_FRAME) {	                    // Initialize if new data is detected
     p = (byte *)&NewFeedback;
     *p++ = incomingBytePrev;
     *p++ = incomingByte;
     idx = 2;
-  } else if (idx >= 2 && idx < sizeof(SerialFeedback)) {
+  } else if (idx >= 2 && idx < sizeof(SerialFeedback)) {  // Save the new received data
     *p++ = incomingByte;
     idx++;
   }
 
+  // Check if we reached the end of the package
   if (idx == sizeof(SerialFeedback)) {
-    uint16_t checksum = (uint16_t)(NewFeedback.start ^ NewFeedback.cmd1 ^ NewFeedback.cmd2 ^ NewFeedback.speedR_meas ^ NewFeedback.speedL_meas
+    uint16_t checksum;
+    checksum = (uint16_t)(NewFeedback.start ^ NewFeedback.cmd1 ^ NewFeedback.cmd2 ^ NewFeedback.speedR_meas ^ NewFeedback.speedL_meas
                         ^ NewFeedback.batVoltage ^ NewFeedback.boardTemp ^ NewFeedback.cmdLed);
+
+    // Check validity of the new data
     if (NewFeedback.start == START_FRAME && checksum == NewFeedback.checksum) {
+      // Copy the new data
       memcpy(&Feedback, &NewFeedback, sizeof(SerialFeedback));
+    } else {
+      // Non-valid data skipped
     }
-    idx = 0;
+    idx = 0;    // Reset the index (it prevents to enter in this if condition in the next cycle)
   }
+
+  // Update previous states
   incomingBytePrev = incomingByte;
 }
 
 void setup() {
-  Serial.begin(115200);
-  HoverSerial.begin(HOVER_SERIAL_BAUD, SERIAL_8N1, 16, 17); // RX=16, TX=17
+   Serial.begin(115200);
+   HoverSerial.begin(HOVER_SERIAL_BAUD, SERIAL_8N1, 16, 17); // RX=16, TX=17
 
-  // Connect to WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi");
-  Serial.println(WiFi.localIP());
+   // Connect to WiFi
+   WiFi.begin(ssid, password);
+   while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.println("Connecting to WiFi...");
+   }
+   Serial.println("Connected to WiFi");
+   Serial.println(WiFi.localIP());
+
+   // Setup OTA
+   ArduinoOTA.setHostname("ESP32-HoverboardController");
+   ArduinoOTA.setPassword("admin");  // Optional password for OTA updates
+
+   ArduinoOTA.onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH) {
+         type = "sketch";
+      } else {  // U_SPIFFS
+         type = "filesystem";
+      }
+      Serial.println("Start updating " + type);
+   });
+
+   ArduinoOTA.onEnd([]() {
+      Serial.println("\nEnd");
+   });
+
+   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+   });
+
+   ArduinoOTA.onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) {
+         Serial.println("Auth Failed");
+      } else if (error == OTA_BEGIN_ERROR) {
+         Serial.println("Begin Failed");
+      } else if (error == OTA_CONNECT_ERROR) {
+         Serial.println("Connect Failed");
+      } else if (error == OTA_RECEIVE_ERROR) {
+         Serial.println("Receive Failed");
+      } else if (error == OTA_END_ERROR) {
+         Serial.println("End Failed");
+      }
+   });
+
+   ArduinoOTA.begin();
+   Serial.println("OTA ready");
 
   // Web server routes
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -210,13 +269,15 @@ unsigned long iTimeSend = 0;
 
 void loop(void)
 {
-  unsigned long timeNow = millis();
+   ArduinoOTA.handle();  // Handle OTA updates
 
-  // Check for new received data
-  Receive();
+   unsigned long timeNow = millis();
 
-  // Send commands
-  if (iTimeSend > timeNow) return;
-  iTimeSend = timeNow + TIME_SEND;
-  Send(currentSteer, currentSpeed);
+   // Check for new received data
+   Receive();
+
+   // Send commands
+   if (iTimeSend > timeNow) return;
+   iTimeSend = timeNow + TIME_SEND;
+   Send(currentSteer, currentSpeed);
 }
