@@ -12,7 +12,7 @@ AutoMo is an attempt to build an automatic lawn mower using mostly parts I have 
 
 - **Drive Motors**: Repurposed hoverboard motors with custom flashed firmware enabling UART-based FOC control and wheel odometry
 - **Cutting Motors**: 2x large drone motors as the cutting heads
-- **Control Board**: Hoverboard control board with [custom FOC firmware](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC)
+- **Control Board**: Hoverboard control board with [custom FOC firmware](Custom_Hoverboard_Firmware_ROS/) (based on [hoverboard-firmware-hack-FOC](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC))
 - **LiDAR**: LD06 360-degree LIDAR module - see my [LD06 interface project](https://github.com/Zando777/LD06)
 - **Co-processor**: ESP32 for motor control and sensor interfacing
 - **Main Computer**: Raspberry Pi Zero 2 for ROS and autonomous navigation
@@ -49,19 +49,9 @@ Top view showing the dual drone motors mounted as cutter heads, the hoverboard c
 
 3D printed blade guard with drone motor mounted on 2020 extrusion mast.
 
-## Repository Structure
-
-```
-AutoMo/
-├── ESP32_Hoverboard_Controller/   # ESP32 PlatformIO project for motor control
-│   └── mainboard_pinout.png       # Hoverboard mainboard pinout reference
-├── Custom_Hoverboard_ROS/         # ROS integration (in development)
-└── Images/                        # Project photos and CAD renders
-```
-
 ## Hardware Requirements
 
-- Hoverboard with hacked firmware ([FOC firmware](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC))
+- Hoverboard with custom firmware (included in this repo, based on [hoverboard-firmware-hack-FOC](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC))
 - ESP32 development board
 - Raspberry Pi Zero 2
 - LD06 LIDAR module
@@ -69,12 +59,6 @@ AutoMo/
 - 2x 18V drill batteries
 - 2020 aluminium extrusion
 - 3D printer for custom brackets
-
-## Software Requirements
-
-- PlatformIO for ESP32 development
-- ROS (target platform for autonomous navigation)
-- Python for LIDAR visualisation
 
 ## Current Status
 
@@ -96,4 +80,4 @@ AutoMo/
 
 ## Acknowledgements
 
-- [Emanuel FERU](https://github.com/EmanuelFeru) for the hoverboard FOC firmware hack
+- [Emanuel FERU](https://github.com/EmanuelFeru) for the original hoverboard FOC firmware hack which the custom firmware is based on
