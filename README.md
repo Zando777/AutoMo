@@ -1,5 +1,7 @@
 # AutoMo
 
+> **WORK IN PROGRESS** - This project is under active development. I hope to have it finished in the coming weeks.
+
 An autonomous lawn mower built from repurposed parts and hobby components. This project aims to create a fully autonomous ROS-based automatic mower for my parents' backyard.
 
 ![CAD Isometric View](Images/cad_isometric.png)
