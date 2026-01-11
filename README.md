@@ -1,42 +1,99 @@
-# HoverRover
+# AutoMo
 
-A project for controlling a hoverboard-based rover using Arduino and ESP32 microcontrollers. Provides serial communication for basic control and a web-based interface for remote operation via WiFi.
+An autonomous lawn mower built from repurposed parts and hobby components. This project aims to create a fully autonomous ROS-based automatic mower for my parents' backyard.
 
-## Components
+![CAD Isometric View](Images/cad_isometric.png)
 
-- **ArduinoUno_Hoverboard_Controller**: Arduino Nano code for direct serial control of hoverboard motors.
-- **ESP32_Hoverboard_Controller**: ESP32-based web server with a user interface for speed and steering control, including real-time feedback.
+## Project Overview
+
+AutoMo is an attempt to build an automatic lawn mower using mostly parts I have lying around. The project started on 3rd January 2026 and is being developed rapidly in spare time.
+
+### Key Components
+
+- **Drive Motors**: Repurposed hoverboard motors with custom flashed firmware enabling UART-based FOC control and wheel odometry
+- **Cutting Motors**: 2x large drone motors as the cutting heads
+- **Control Board**: Hoverboard control board with [custom FOC firmware](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC)
+- **LiDAR**: LD06 360-degree LIDAR module - see my [LD06 interface project](https://github.com/Zando777/LD06)
+- **Co-processor**: ESP32 for motor control and sensor interfacing
+- **Main Computer**: Raspberry Pi Zero 2 for ROS and autonomous navigation
+- **Power**: 2x 18V drill batteries
+- **Frame**: 2020 aluminium extrusion with 3D printed mounting brackets
+
+## CAD Design
+
+![Side View](Images/cad_side_view.png)
+
+![Front View](Images/cad_front_view.png)
+
+![Top Isometric](Images/cad_top_isometric.png)
+
+![Rear View](Images/cad_rear_view.png)
+
+## Current Build
+
+### Chassis
+
+![Chassis Overview](Images/chassis_overview.jpg)
+
+The chassis uses 2020 aluminium extrusion as the main frame with hoverboard hub motors for the drive wheels. A caster wheel at the rear provides stability.
+
+![Chassis Top View](Images/chassis_top_view.jpg)
+
+Top view showing the dual drone motors mounted as cutter heads, the hoverboard control board, and wiring to the ESP32.
+
+![Chassis Angle View](Images/chassis_angle_view.jpg)
+
+### Cutter Head Assembly
+
+![Cutter Head](Images/cutter_head.jpg)
+
+3D printed blade guard with drone motor mounted on 2020 extrusion mast.
+
+## Repository Structure
+
+```
+AutoMo/
+├── ESP32_Hoverboard_Controller/   # ESP32 PlatformIO project for motor control
+│   └── mainboard_pinout.png       # Hoverboard mainboard pinout reference
+├── Custom_Hoverboard_ROS/         # ROS integration (in development)
+└── Images/                        # Project photos and CAD renders
+```
 
 ## Hardware Requirements
 
-- Hoverboard with hacked firmware (e.g., from https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC)
-- Arduino Nano (for serial control)
-- ESP32 board (for web control)
-- Appropriate wiring and power supply
+- Hoverboard with hacked firmware ([FOC firmware](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC))
+- ESP32 development board
+- Raspberry Pi Zero 2
+- LD06 LIDAR module
+- 2x drone motors (for cutting)
+- 2x 18V drill batteries
+- 2020 aluminium extrusion
+- 3D printer for custom brackets
 
 ## Software Requirements
 
-- Arduino IDE for uploading `.ino` files
-- PlatformIO for ESP32 project
-- WiFi network for ESP32 web interface
+- PlatformIO for ESP32 development
+- ROS (target platform for autonomous navigation)
+- Python for LIDAR visualisation
 
-## Setup
+## Current Status
 
-1. **Arduino Serial Control**:
-   - Upload `hoverserial.ino` to Arduino Nano.
-   - Connect to hoverboard serial interface.
+**Working:**
+- Drivetrain and frame
+- Cutter heads
+- ESP32 motor control with web interface
+- Wheel odometry feedback
 
-2. **ESP32 Web Control**:
-   - Open `ESP32_Hoverboard_Controller` in PlatformIO.
-   - Update WiFi credentials in `main.cpp`.
-   - Build and upload to ESP32.
-   - Access web interface at ESP32's IP address.
+**In Progress:**
+- ROS integration
+- Proper electronics mounting
+- LiDAR integration
+- Autonomous navigation
 
-## Usage
+## Related Projects
 
-- **Serial**: Arduino sends speed commands and receives feedback.
-- **Web**: Use sliders to control speed/steer, view battery/temp data.
+- [LD06](https://github.com/Zando777/LD06) - ESP32 interface for LD06 360-degree LIDAR with real-time Python visualisation
 
-## License
+## Acknowledgements
 
-Based on hoverboard firmware hack by Emanuel FERU.
+- [Emanuel FERU](https://github.com/EmanuelFeru) for the hoverboard FOC firmware hack
