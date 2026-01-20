@@ -1,0 +1,6 @@
+[submodule "hoverboard-driver-ROS"]
+	path = hoverboard-driver-ROS
+	url = https://github.com/hoverboard-robotics/hoverboard-driver.git
+[submodule "hoverboard-firmware-hack-FOC-ROS"]
+	path = hoverboard-firmware-hack-FOC-ROS
+	url = https://github.com/hoverboard-robotics/hoverboard-firmware-hack-FOC.git
