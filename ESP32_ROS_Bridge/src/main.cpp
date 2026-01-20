@@ -215,6 +215,7 @@ void handleNewClient(void* arg, AsyncClient* client) {
 void setupWiFi() {
     Serial.println("Connecting to WiFi...");
     WiFi.mode(WIFI_STA);
+    WiFi.config(staticIP, gateway, subnet, dns);
     WiFi.begin(ssid, password);
 
     int attempts = 0;

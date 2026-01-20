@@ -69,12 +69,119 @@ Top view showing the dual drone motors mounted as cutter heads, the hoverboard c
 - Cutter heads
 - ESP32 motor control with web interface
 - Wheel odometry feedback
+- ROS2 Jazzy integration
+- Teleop control via keyboard
 
 **In Progress:**
-- ROS integration
 - Proper electronics mounting
 - LiDAR integration
 - Autonomous navigation
+
+## Software Setup
+
+### 1. ROS2 Jazzy Installation (Ubuntu 24.04)
+
+```bash
+# Add ROS2 repository
+sudo apt install software-properties-common
+sudo add-apt-repository universe
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+# Install ROS2 Jazzy
+sudo apt update
+sudo apt install ros-jazzy-desktop
+
+# Install additional dependencies
+sudo apt install ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-xacro ros-jazzy-teleop-twist-keyboard python3-colcon-common-extensions
+```
+
+Add to `~/.bashrc`:
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_ws/install/setup.bash
+```
+
+### 2. ROS2 Workspace Setup
+
+```bash
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+
+# Clone hoverboard driver (use humble branch for ROS2)
+git clone -b humble https://github.com/hoverboard-robotics/hoverboard-driver.git
+
+# Build
+cd ~/ros2_ws
+colcon build
+source install/setup.bash
+```
+
+### 3. ESP32 ROS Bridge Setup
+
+The ESP32 acts as a WiFi-to-Serial bridge between ROS and the hoverboard.
+
+1. Install PlatformIO: `pip install platformio`
+
+2. Configure WiFi credentials in `ESP32_ROS_Bridge/include/wifi_config.h`:
+```c
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// Static IP configuration
+IPAddress staticIP(192, 168, 68, 100);      // ESP32's fixed IP
+IPAddress gateway(192, 168, 68, 1);         // Your router's IP
+IPAddress subnet(255, 255, 252, 0);
+IPAddress dns(192, 168, 68, 1);
+```
+
+3. Flash the ESP32:
+```bash
+cd ESP32_ROS_Bridge
+pio run -t upload -e esp32dev
+```
+
+4. For subsequent OTA updates:
+```bash
+pio run -t upload -e esp32dev-ota
+```
+
+### 4. Running the System
+
+**Terminal 1 - Start socat bridge:**
+```bash
+socat pty,link=/tmp/hoverboard,raw tcp:192.168.68.100:8880
+```
+
+**Terminal 2 - Launch ROS driver:**
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 launch hoverboard_driver diffbot.launch.py
+```
+
+**Terminal 3 - Teleop control:**
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/hoverboard_base_controller/cmd_vel -p stamped:=true -p frame_id:=base_link
+```
+
+Teleop controls:
+- `i` - forward
+- `,` - backward
+- `j` - turn left
+- `l` - turn right
+- `k` - stop
+- `z` - decrease speed
+- `q` - increase speed
+
+**Important:** Reduce speed to ~0.2 before driving (press `z` multiple times).
+
+### 5. Monitoring
+
+- ESP32 web dashboard: http://192.168.68.100
+- ROS topics:
+  - `/hoverboard_base_controller/odom` - odometry
+  - `/hoverboard/battery_voltage` - battery level
+  - `/hoverboard/left_wheel/velocity` - wheel speeds
 
 ## Related Projects
 
